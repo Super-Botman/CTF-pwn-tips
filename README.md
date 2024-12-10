@@ -9,6 +9,7 @@ CTF-pwn-tips
 * [Find specific function offset in libc](#find-specific-function-offset-in-libc)
 * [Find '/bin/sh' or 'sh' in library](#find-binsh-or-sh-in-library)
 * [Leak stack address](#leak-stack-address)
+* [Leak heap address](#leak-heap-address)
 * [Fork problem in gdb](#fork-problem-in-gdb)
 * [Secret of a mysterious section - .tls](#secret-of-a-mysterious-section---tls)
 * [Predictable RNG(Random Number Generator)](#predictable-rngrandom-number-generator)
@@ -248,6 +249,28 @@ $12 = 0x7fffffffe230
 
 This [manual](https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html) explains details about `environ`.
 
+## Leak heap address
+**constraints**:
+
+* Have already leaked libc base address
+* Can leak the content of arbitrary address
+
+### TL;DR
+If you only got a libc leak and want to get the heap address you can use the `__curbrk` symbol.
+
+### Explaination
+Sbrk is a function from the libc which allow you to allow more space to heap it's return the new address of the heap but if you call it like this `sbrk(0);` you get the actual heap address which is stored in `__cubrk` as you can see here:
+
+![image](https://github.com/user-attachments/assets/ce3453e7-cbb1-4a4f-9f56-871b18f6e114)
+
+But as you can see, the symbol may change between libc:
+![image](https://github.com/user-attachments/assets/8e14939f-c27f-4a65-bd8b-1913aa1d0e3a)
+![image](https://github.com/user-attachments/assets/c603de6d-12e1-47c0-8d3b-13fe6286dde4)
+
+So you can use [bata24 gdb-gef fork](https://github.com/bata24/gef) to check this by executing command `symbols` and search for brk symbols and you should get it near to `environ` in the bss sector:
+
+![image](https://github.com/user-attachments/assets/6828a2e0-6ccb-4cf1-966b-3e88cfd0f118)
+
 ## Fork problem in gdb
 
 When you use **gdb** to debug a binary with `fork()` function, you can use the following command to determine which process to follow (The default setting of original gdb is parent, while that of gdb-peda is child.):
@@ -481,3 +504,7 @@ According to its [man page](http://man7.org/linux/man-pages/man2/execveat.2.html
 > If pathname is absolute, then dirfd is ignored.
 
 Hence, if we make `pathname` point to `"/bin/sh"`, and set `argv`, `envp` and `flags` to 0, we can still get a shell whatever the value of `dirfd`.
+
+
+
+
