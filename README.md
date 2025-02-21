@@ -9,6 +9,7 @@ CTF-pwn-tips
 * [Find specific function offset in libc](#find-specific-function-offset-in-libc)
 * [Find '/bin/sh' or 'sh' in library](#find-binsh-or-sh-in-library)
 * [Leak stack address](#leak-stack-address)
+* [Leak heap address](#leak-heap-address)
 * [Fork problem in gdb](#fork-problem-in-gdb)
 * [Secret of a mysterious section - .tls](#secret-of-a-mysterious-section---tls)
 * [Predictable RNG(Random Number Generator)](#predictable-rngrandom-number-generator)
@@ -248,6 +249,29 @@ $12 = 0x7fffffffe230
 
 This [manual](https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html) explains details about `environ`.
 
+## Leak heap address
+**constraints:**  
+- The libc base address has already been leaked.  
+- The content of an arbitrary address can be leaked.  
+
+**TL;DR:**  
+If only a libc leak is available and retrieving the heap address is necessary, the `__curbrk` symbol can be utilized.  
+
+**explanation:**  
+The `sbrk` function, part of the standard C library (libc), is responsible for increasing the heap's memory allocation. It returns the new heap address. However, when invoked as follows:  
+```c
+sbrk(0);
+```  
+it returns the current heap address, which is stored in the `__curbrk` symbol, as illustrated below:  
+![image](https://github.com/user-attachments/assets/ce3453e7-cbb1-4a4f-9f56-871b18f6e114)
+
+It is important to note that this symbol may vary across different libc versions:  
+![image](https://github.com/user-attachments/assets/8e14939f-c27f-4a65-bd8b-1913aa1d0e3a)
+![image](https://github.com/user-attachments/assets/c603de6d-12e1-47c0-8d3b-13fe6286dde4)
+
+To determine the correct symbol, the [GDB-GEF fork by Bata24](https://github.com/bata24/gef) can be used. Executing the `symbols` command and searching for `brk` symbols should reveal its location, typically near `environ` in the BSS section:  
+![image](https://github.com/user-attachments/assets/6828a2e0-6ccb-4cf1-966b-3e88cfd0f118)
+
 ## Fork problem in gdb
 
 When you use **gdb** to debug a binary with `fork()` function, you can use the following command to determine which process to follow (The default setting of original gdb is parent, while that of gdb-peda is child.):
@@ -481,3 +505,7 @@ According to its [man page](http://man7.org/linux/man-pages/man2/execveat.2.html
 > If pathname is absolute, then dirfd is ignored.
 
 Hence, if we make `pathname` point to `"/bin/sh"`, and set `argv`, `envp` and `flags` to 0, we can still get a shell whatever the value of `dirfd`.
+
+
+
+
