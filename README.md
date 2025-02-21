@@ -250,25 +250,26 @@ $12 = 0x7fffffffe230
 This [manual](https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html) explains details about `environ`.
 
 ## Leak heap address
-**constraints**:
+**constraints:**  
+- The libc base address has already been leaked.  
+- The content of an arbitrary address can be leaked.  
 
-* Have already leaked libc base address
-* Can leak the content of arbitrary address
+**TL;DR:**  
+If only a libc leak is available and retrieving the heap address is necessary, the `__curbrk` symbol can be utilized.  
 
-### TL;DR
-If you only got a libc leak and want to get the heap address you can use the `__curbrk` symbol.
-
-### Explaination
-Sbrk is a function from the libc which allow you to allow more space to heap it's return the new address of the heap but if you call it like this `sbrk(0);` you get the actual heap address which is stored in `__cubrk` as you can see here:
-
+**explanation:**  
+The `sbrk` function, part of the standard C library (libc), is responsible for increasing the heap's memory allocation. It returns the new heap address. However, when invoked as follows:  
+```c
+sbrk(0);
+```  
+it returns the current heap address, which is stored in the `__curbrk` symbol, as illustrated below:  
 ![image](https://github.com/user-attachments/assets/ce3453e7-cbb1-4a4f-9f56-871b18f6e114)
 
-But as you can see, the symbol may change between libc:
+It is important to note that this symbol may vary across different libc versions:  
 ![image](https://github.com/user-attachments/assets/8e14939f-c27f-4a65-bd8b-1913aa1d0e3a)
 ![image](https://github.com/user-attachments/assets/c603de6d-12e1-47c0-8d3b-13fe6286dde4)
 
-So you can use [bata24 gdb-gef fork](https://github.com/bata24/gef) to check this by executing command `symbols` and search for brk symbols and you should get it near to `environ` in the bss sector:
-
+To determine the correct symbol, the [GDB-GEF fork by Bata24](https://github.com/bata24/gef) can be used. Executing the `symbols` command and searching for `brk` symbols should reveal its location, typically near `environ` in the BSS section:  
 ![image](https://github.com/user-attachments/assets/6828a2e0-6ccb-4cf1-966b-3e88cfd0f118)
 
 ## Fork problem in gdb
